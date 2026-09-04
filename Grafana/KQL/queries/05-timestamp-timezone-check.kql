@@ -1,0 +1,24 @@
+// ============================================================================
+// 05 - Timestamp / timezone sanity check
+// ----------------------------------------------------------------------------
+// Purpose : NOT an investigation query - a diagnostic. Confirms how
+//           TimeGenerated is really stored and rendered before you trust any
+//           timeline. Log Analytics stores UTC; the portal may display your
+//           local timezone, which silently shifts every window you write.
+// Use it  : whenever a window "should" have data and comes back empty, or
+//           when correlating App Service logs with another system's clock.
+//           `affiche` = as the UI renders it, `en_texte` = the raw UTC value.
+//           If they differ, your datetime() filters are in UTC, not local time.
+// Table   : AppServiceHTTPLogs
+//
+// TUNABLES:
+//   datetime window     -> any 1-2 minute window you know has traffic
+//   To convert for reading, add:
+//     | extend heure_paris = datetime_utc_to_local(TimeGenerated, "Europe/Paris")
+//   NOTE: filter in UTC, convert only for display. Never filter on the
+//         converted column - it defeats the ingestion-time index.
+// ============================================================================
+AppServiceHTTPLogs
+| where TimeGenerated between (datetime(2026-09-02 02:14) .. datetime(2026-09-02 02:16))
+| extend affiche = TimeGenerated, en_texte = tostring(TimeGenerated)
+| project affiche, en_texte, CIp, CsUriStem

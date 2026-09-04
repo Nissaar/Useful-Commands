@@ -1,0 +1,30 @@
+// ============================================================================
+// 01 - Suspicious IP triage (broad sweep, start here)
+// ----------------------------------------------------------------------------
+// Purpose : one row per client IP over a long window, with the signals that
+//           separate a normal visitor from a scanner / brute-forcer:
+//           write attempts (POST), error volume (401/403/404/5xx), and how
+//           many distinct URLs it touched (URL fan-out = scanning behaviour).
+// Use it  : first query of any investigation. Gives you the IPs and the
+//           timestamps that you then drill into with queries 02/03/06.
+// Table   : AppServiceHTTPLogs (Azure App Service, Log Analytics workspace)
+//
+// TUNABLES (see README section "01"):
+//   ago(7d)                -> lookback window
+//   make_set(..., 15)      -> number of example URLs kept per IP
+//   posts > 5 / erreurs>30 -> noise floor; raise on busy sites, lower on quiet
+//   sort by posts desc     -> swap to `erreurs` or `urls` to rank differently
+// ============================================================================
+AppServiceHTTPLogs
+| where TimeGenerated > ago(7d)
+| summarize
+    requetes = count(),
+    posts    = countif(CsMethod == "POST"),
+    erreurs  = countif(ScStatus >= 400),
+    urls     = dcount(CsUriStem),
+    premier  = min(TimeGenerated),
+    dernier  = max(TimeGenerated),
+    exemples = make_set(CsUriStem, 15)
+  by CIp
+| where posts > 5 or erreurs > 30
+| sort by posts desc

@@ -1,0 +1,22 @@
+// ============================================================================
+// 02 - Full request timeline for a narrow window
+// ----------------------------------------------------------------------------
+// Purpose : raw, unaggregated, chronological view of everything that hit the
+//           app during a short window. This is how you read the actual story:
+//           recon -> probe -> exploit attempt -> follow-up.
+// Use it  : after query 01 hands you a suspicious timestamp. Keep the window
+//           SHORT (20-30 min) - this returns one row per request.
+// Table   : AppServiceHTTPLogs
+//
+// TUNABLES:
+//   datetime(...) .. datetime(...) -> the window. UTC. Format also accepts
+//                                     seconds: datetime(2026-09-02 00:05:30)
+//   project                        -> add CsHost, Cookie, Referer, Result,
+//                                     ScBytes, ComputerName as needed
+//   add `| where CIp == "x.x.x.x"` -> focus on one attacker
+//   sort asc                       -> keep asc; chronology is the point
+// ============================================================================
+AppServiceHTTPLogs
+| where TimeGenerated between (datetime(2026-09-02 00:05) .. datetime(2026-09-02 00:25))
+| project TimeGenerated, CIp, CsMethod, CsUriStem, CsUriQuery, ScStatus, UserAgent, TimeTaken
+| sort by TimeGenerated asc

@@ -1,0 +1,23 @@
+// ============================================================================
+// 03 - Write attempts (POST / PUT) in a window
+// ----------------------------------------------------------------------------
+// Purpose : isolate the requests that could actually CHANGE something -
+//           uploads, logins, form posts, webshell drops. CsBytes is the
+//           request body size: a large POST to an odd path is a likely upload.
+// Use it  : same window as query 02, but stripped down to the dangerous verbs.
+//           Cross-check any 2xx/3xx here - a *successful* write from a
+//           suspicious IP is the finding that matters.
+// Table   : AppServiceHTTPLogs
+//
+// TUNABLES:
+//   datetime window        -> widen/narrow as needed
+//   in ("POST", "PUT")     -> add "PATCH", "DELETE"; or use
+//                             `!in ("GET","HEAD","OPTIONS")` to catch verb abuse
+//   add `| where ScStatus < 400`  -> only writes that SUCCEEDED
+//   add `| where CsBytes > 10000` -> only large bodies (file uploads)
+// ============================================================================
+AppServiceHTTPLogs
+| where TimeGenerated between (datetime(2026-09-02 00:00) .. datetime(2026-09-02 00:30))
+| where CsMethod in ("POST", "PUT")
+| project TimeGenerated, CIp, CsUriStem, CsUriQuery, ScStatus, CsBytes, UserAgent
+| sort by TimeGenerated asc

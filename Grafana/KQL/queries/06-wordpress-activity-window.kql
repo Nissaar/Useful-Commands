@@ -1,0 +1,31 @@
+// ============================================================================
+// 06 - WordPress admin/content activity + writes in a window
+// ----------------------------------------------------------------------------
+// Purpose : the targeted drill-down. Combines the two things worth watching on
+//           a WordPress-shaped app: touches on /wp-admin/ and /wp-content/,
+//           plus every write attempt regardless of path. One OR'd filter so a
+//           single pass shows both the recon and the action.
+// Use it  : the "what did they actually do" query. Run it on the window that
+//           queries 01/02 pointed you at, then widen the window to follow the
+//           session forward in time.
+// Table   : AppServiceHTTPLogs
+//
+// TUNABLES:
+//   datetime window        -> START narrow (15 min), then widen (1h, 6h) to
+//                             follow the session. This is the main knob.
+//   contains "/wp-admin/"  -> for non-WordPress apps swap for your own
+//                             sensitive prefixes: "/admin/", "/api/",
+//                             "/actuator/", "/.env", "/.git/", "/phpmyadmin/"
+//   CsMethod in ("POST","PUT") -> see query 03 notes
+//   add `| where CIp in ("x.x.x.x", "y.y.y.y")` -> pin to known-bad IPs
+//   add UserAgent to project   -> spot tooling (curl, python-requests, sqlmap)
+//
+// NOTE: mind operator precedence. KQL evaluates `and` before `or`, so if you
+//       add an IP restriction to this line rather than a separate `| where`,
+//       parenthesise the OR group or the filter will not do what you expect.
+// ============================================================================
+AppServiceHTTPLogs
+| where TimeGenerated between (datetime(2026-09-02 02:15) .. datetime(2026-09-02 03:30))
+| where CsUriStem contains "/wp-admin/" or CsUriStem contains "/wp-content/" or CsMethod in ("POST","PUT")
+| project TimeGenerated, CIp, CsMethod, CsUriStem, CsUriQuery, ScStatus, CsBytes
+| sort by TimeGenerated asc

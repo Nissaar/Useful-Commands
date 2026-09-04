@@ -1,0 +1,27 @@
+// ============================================================================
+// 04 - PHP files under upload / content directories (webshell hunt)
+// ----------------------------------------------------------------------------
+// Purpose : /uploads/ and /wp-content/ are meant to hold media, not
+//           executable code. A .php file requested there is either a planted
+//           webshell or a scanner checking whether one is already present.
+//           Aggregated so you see which paths are hot and who is asking.
+// Use it  : standing hygiene check, and after any suspected upload.
+//           A path with hits from MANY ips  = mass scanning (usually harmless).
+//           A path with hits from ONE ip    = someone using their own shell.
+// Table   : AppServiceHTTPLogs
+//
+// TUNABLES:
+//   ago(7d)                     -> lookback
+//   endswith ".php"             -> ".asp", ".aspx", ".jsp", ".phtml", ".php7"
+//                                  or: `| where CsUriStem matches regex @"\.(php|phtml|asp|aspx|jsp)$"`
+//   contains "/uploads/" ...    -> add "/assets/", "/media/", "/tmp/",
+//                                  "/images/", "/files/"
+//   make_set(CIp, 10)           -> more/fewer example IPs
+//   add ` , ScStatus` to `by`   -> split real hits (200) from misses (404)
+// ============================================================================
+AppServiceHTTPLogs
+| where TimeGenerated > ago(7d)
+| where CsUriStem endswith ".php"
+| where CsUriStem contains "/uploads/" or CsUriStem contains "/wp-content/"
+| summarize hits = count(), ips = make_set(CIp, 10), premier = min(TimeGenerated), dernier = max(TimeGenerated) by CsUriStem
+| sort by hits desc
